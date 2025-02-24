@@ -1,0 +1,56 @@
+
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract InsuranceContract {
+    address public insurer;
+
+    struct Policy {
+        address policyholder;
+        uint256 premium;
+        uint256 coverage;
+        uint256 duration;
+        bool active;
+    }
+
+    struct Claim {
+        uint256 amount;
+        bool approved;
+    }
+
+    mapping(address => Policy) public policies;
+    mapping(address => Claim) public claims;
+
+    modifier onlyInsurer() {
+        require(msg.sender == insurer, "Not authorized");
+        _;
+    }
+
+    constructor() {
+        insurer = msg.sender;
+    }
+
+    function issuePolicy(address _policyholder, uint256 _premium, uint256 _coverage, uint256 _duration) external onlyInsurer {
+        policies[_policyholder] = Policy(_policyholder, _premium, _coverage, _duration, true);
+    }
+
+    function payPremium() external payable {
+        require(policies[msg.sender].active, "Policy inactive");
+        require(msg.value == policies[msg.sender].premium, "Incorrect premium");
+    }
+
+    function submitClaim(uint256 _amount) external {
+        require(policies[msg.sender].active, "Policy inactive");
+        claims[msg.sender] = Claim(_amount, false);
+    }
+
+    function approveClaim(address _policyholder) external onlyInsurer {
+        claims[_policyholder].approved = true;
+    }
+
+    function payClaim(address payable _policyholder) external onlyInsurer {
+        require(claims[_policyholder].approved, "Claim not approved");
+        _policyholder.transfer(claims[_policyholder].amount);
+    }
+}
